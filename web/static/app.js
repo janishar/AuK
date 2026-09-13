@@ -22,6 +22,7 @@
     recordTimerHandle: null,
     genStart: 0,
     genTimerHandle: null,
+    pendingUploadFile: null,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -325,13 +326,46 @@
   }
 
   // ------------------------------------------------------------- source audio (upload / record / library)
-  async function uploadToLibrary(file) {
-    const fd = new FormData();
-    fd.append("audio", file, file.name);
-    const res = await apiForm(`/api/sessions/${state.session}/inputs`, fd);
-    await refreshInputs();
-    setSource(res);
+  function describeUploadError(err) {
+    // fetch() itself (not an HTTP error response) rejects with a generic,
+    // browser-specific message on any network failure — "Load failed" in
+    // Safari, "Failed to fetch" in Chrome — most commonly because the local
+    // server isn't reachable (stopped, restarting). Give that a clear,
+    // actionable message instead of the raw browser wording.
+    const looksLikeNetworkError = err instanceof TypeError || /load failed|failed to fetch|networkerror/i.test(err.message || "");
+    if (looksLikeNetworkError) {
+      return "Couldn't reach the AuK Studio server (it may be stopped or restarting). Your recording wasn't lost — retry once it's back up.";
+    }
+    return `Upload failed: ${err.message}`;
   }
+
+  function showUploadError(file, err) {
+    state.pendingUploadFile = file;
+    $("uploadErrorText").textContent = describeUploadError(err);
+    $("uploadErrorBanner").classList.remove("hidden");
+  }
+
+  function clearUploadError() {
+    state.pendingUploadFile = null;
+    $("uploadErrorBanner").classList.add("hidden");
+  }
+
+  async function uploadToLibrary(file) {
+    try {
+      const fd = new FormData();
+      fd.append("audio", file, file.name);
+      const res = await apiForm(`/api/sessions/${state.session}/inputs`, fd);
+      await refreshInputs();
+      setSource(res);
+      clearUploadError();
+    } catch (err) {
+      showUploadError(file, err);
+    }
+  }
+
+  $("uploadRetryBtn").onclick = () => {
+    if (state.pendingUploadFile) uploadToLibrary(state.pendingUploadFile);
+  };
 
   function setSource(src) {
     state.source = src;
@@ -346,6 +380,7 @@
   $("sourceClearBtn").onclick = () => {
     state.source = null;
     $("sourcePreview").classList.add("hidden");
+    clearUploadError();
     renderRefGallery();
     renderDurationControl();
     validateForm();
@@ -361,11 +396,11 @@
   });
   dropZone.addEventListener("drop", (e) => {
     const f = e.dataTransfer.files[0];
-    if (f) uploadToLibrary(f).catch((err) => alert(`Upload failed: ${err.message}`));
+    if (f) uploadToLibrary(f);
   });
   $("fileInput").onchange = (e) => {
     const f = e.target.files[0];
-    if (f) uploadToLibrary(f).catch((err) => alert(`Upload failed: ${err.message}`));
+    if (f) uploadToLibrary(f);
   };
 
   // --- microphone recording, encoded to WAV entirely client-side ---
@@ -415,7 +450,7 @@
       const audioBuf = await ctx.decodeAudioData(arrBuf);
       const wavBlob = audioBufferToWav(audioBuf);
       const file = new File([wavBlob], `recording-${Date.now()}.wav`, { type: "audio/wav" });
-      uploadToLibrary(file).catch((err) => alert(`Upload failed: ${err.message}`));
+      uploadToLibrary(file);
     };
     state.mediaRecorder = mr;
     state.recording = true;
@@ -633,6 +668,7 @@
     $("sessionSelect").value = name;
     state.source = null;
     $("sourcePreview").classList.add("hidden");
+    clearUploadError();
     const [hist, inputs] = await Promise.all([
       api(`/api/sessions/${name}/history`),
       api(`/api/sessions/${name}/inputs`),
