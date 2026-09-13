@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AuK Studio</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">Au<span>K</span> <em>studio</em></div>
+    <div class="session-picker">
+      <select id="sessionSelect"></select>
+      <button id="sessionNewBtn" title="New session">+ New</button>
+      <button id="sessionDupBtn" title="Duplicate session">⧉ Duplicate</button>
+      <button id="sessionDelBtn" title="Delete session">🗑 Delete</button>
+    </div>
+    <div class="engine-pills" id="enginePills"></div>
+    <div class="status">
+      <span id="connStatus" class="dot"></span>
+      <span id="connLabel">connecting…</span>
+    </div>
+  </header>
+
+  <!-- modals -->
+  <div class="modal hidden" id="sessionNameModal">
+    <div class="modal-card">
+      <h3 id="sessionNameModalTitle">New session</h3>
+      <label class="field-label">Session name</label>
+      <input type="text" id="sessionNameInput" placeholder="my-voice-tests" autocomplete="off">
+      <p class="errors hidden" id="sessionNameModalError"></p>
+      <div class="modal-actions">
+        <button id="sessionNameModalCancel" class="ghost-btn">Cancel</button>
+        <button id="sessionNameModalSave" class="primary-btn sm">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="confirmModal">
+    <div class="modal-card">
+      <h3 id="confirmModalTitle">Are you sure?</h3>
+      <p id="confirmModalMessage" class="hint"></p>
+      <div class="modal-actions">
+        <button id="confirmModalCancel" class="ghost-btn">Cancel</button>
+        <button id="confirmModalOk" class="danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- LEFT: task + instruction -->
+    <aside class="panel left-panel">
+      <section>
+        <div class="section-title">Task</div>
+        <div class="category-tabs" id="categoryTabs"></div>
+        <div class="task-grid" id="taskGrid"></div>
+      </section>
+
+      <section id="taskDetail" class="hidden">
+        <div class="task-head">
+          <div>
+            <div class="task-title" id="taskTitle"></div>
+            <div class="task-desc" id="taskDesc"></div>
+          </div>
+          <div class="lang-toggle" id="langToggle">
+            <button data-lang="en" class="active">EN</button>
+            <button data-lang="zh">中文</button>
+          </div>
+        </div>
+        <div id="fieldContainer"></div>
+
+        <div class="hint" id="inputHint" style="display:none"></div>
+
+        <label class="field-label">Instruction <span class="muted">(auto-built — edit freely)</span></label>
+        <textarea id="instructionPreview" rows="6"></textarea>
+
+        <details class="cookbook-ref">
+          <summary>Cookbook template</summary>
+          <pre id="cookbookTemplate"></pre>
+        </details>
+      </section>
+    </aside>
+
+    <!-- CENTER: audio + generate + gallery -->
+    <main class="panel center-panel">
+      <section class="audio-card">
+        <div class="audio-card-col">
+          <div class="section-title">Source audio <span class="muted" id="sourceReq"></span></div>
+          <div id="dropZone" class="drop-zone">Drop a WAV/MP3 here, click to browse, or record</div>
+          <input type="file" id="fileInput" accept="audio/*" class="hidden">
+          <div class="rec-row">
+            <button id="recordBtn" class="ghost-btn">● Record</button>
+            <span id="recordTimer" class="muted hidden">0:00</span>
+          </div>
+          <div id="sourcePreview" class="source-preview hidden">
+            <audio id="sourceAudioEl" controls></audio>
+            <div class="source-meta"><span id="sourceMeta"></span><button id="sourceClearBtn" class="link-btn">remove</button></div>
+          </div>
+        </div>
+        <div class="audio-card-col">
+          <div class="section-title">Duration</div>
+          <div id="durationControl" class="duration-control"></div>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="settings-row">
+          <div>
+            <label class="field-label">Model</label>
+            <div class="segmented" id="variantSeg"></div>
+          </div>
+          <div>
+            <label class="field-label">Device</label>
+            <select id="deviceSelect"></select>
+          </div>
+          <div>
+            <label class="field-label">Dtype</label>
+            <select id="dtypeSelect">
+              <option value="bf16">bf16</option>
+              <option value="fp16">fp16</option>
+              <option value="fp32">fp32</option>
+            </select>
+          </div>
+          <label class="check cpu-offload-check"><input type="checkbox" id="cpuOffloadInput"> CPU offload</label>
+        </div>
+
+        <details class="advanced">
+          <summary>Advanced sampling</summary>
+          <div class="settings-row">
+            <div><label class="field-label">NFE steps</label><input type="number" id="nfeInput" min="1" max="100" value="32"></div>
+            <div><label class="field-label">CFG strength</label><input type="number" id="cfgInput" min="0" max="10" step="0.1" value="2.0"></div>
+            <div><label class="field-label">Sway coef</label><input type="number" id="swayInput" min="-2" max="2" step="0.01" value="-1.0"></div>
+            <div><label class="field-label">Seed <span class="muted">(blank = random)</span></label><input type="number" id="seedInput" placeholder="random"></div>
+          </div>
+          <div id="flashNote" class="hint hidden">AuK-Flash locks sampling to its fixed 4-step / CFG-off recipe — the fields above are ignored.</div>
+        </details>
+
+        <div class="engine-status-row">
+          <span id="engineStatusText" class="muted"></span>
+          <button id="loadModelBtn" class="ghost-btn sm">Load model</button>
+          <button id="unloadModelBtn" class="ghost-btn sm">Unload</button>
+        </div>
+
+        <button id="generateBtn" class="primary-btn">Generate</button>
+        <div id="validationErrors" class="errors hidden"></div>
+      </section>
+
+      <section class="progress-section hidden" id="progressSection">
+        <div class="spinner"></div>
+        <div>
+          <div id="progressLabel">Generating…</div>
+          <div class="muted" id="progressTimer">0.0s</div>
+        </div>
+      </section>
+
+      <section class="output-card hidden" id="outputCard">
+        <div class="section-title">Latest result</div>
+        <audio id="outputAudioEl" controls></audio>
+        <div class="output-meta" id="outputMeta"></div>
+      </section>
+
+      <section class="terminal-section">
+        <div class="section-title">
+          Terminal
+          <button id="termClearBtn" class="link-btn">clear</button>
+        </div>
+        <pre id="terminalLog" class="terminal-log"></pre>
+      </section>
+    </main>
+
+    <!-- RIGHT: reference library + generations -->
+    <aside class="panel right-panel">
+      <section>
+        <div class="section-title">Reference library <span class="muted" id="refCount"></span></div>
+        <div class="hint">Uploads and recordings are saved here so you can reuse the same voice across tasks.</div>
+        <div id="refGallery" class="ref-gallery"></div>
+      </section>
+
+      <section class="gallery-section">
+        <div class="section-title">Generations <span id="takeCount" class="muted"></span></div>
+        <div id="gallery" class="gallery"></div>
+      </section>
+    </aside>
+
+  </div>
+</div>
+<script src="/static/tasks.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

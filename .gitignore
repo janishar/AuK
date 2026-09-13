@@ -10,6 +10,10 @@ agent_space/
 gradio/
 eval/
 assets/after_pe/
+
+# AuK Studio (web/) — generated session data, keep the empty dir structure
+web/sessions/*
+!web/sessions/.gitkeep
 # Python
 __pycache__/
 *.py[cod]

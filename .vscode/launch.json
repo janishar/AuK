@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "AuK Studio: Run server",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/web/server.py",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "cwd": "${workspaceFolder}/web",
+      "args": ["--port", "8420"],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "AuK Studio: Run server (auto-reload)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/web/server.py",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "cwd": "${workspaceFolder}/web",
+      "args": ["--port", "8420", "--reload"],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

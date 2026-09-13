@@ -1,0 +1,5 @@
+# AuK Studio web UI — install into the same environment as the `auk` package
+# (it imports auk.infer.infer_auk directly, so core install must already be done).
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
