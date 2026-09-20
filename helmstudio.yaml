@@ -1,8 +1,10 @@
 # AuK studio's manifest for helmstudio: the same studio the registry points at,
 # described by its own repository, beside the code it runs.
 #
-# This replaces the inline manifest carried in helmstudio's
-# studios/auk-studio.yaml; the entry there keeps only id, repo and ref.
+# helmstudio's studios/auk-studio.yaml carries a copy, and that copy is not dead
+# weight: resolution reaches nothing over the network, so before this repository
+# is fetched the registry's copy is the only manifest there is. What matters is
+# that the two agree — a change here belongs in that entry in the same breath.
 id: auk-studio
 name: AuK studio
 description: PyTorch speech generation and editing on mps, with AuK and AuK-Flash checkpoints.
@@ -10,9 +12,9 @@ kinds: [audio]
 hue: { dark: "#8b7cf0", light: "#5c4bc4" }
 license: MIT
 repo: https://github.com/janishar/AuK
-# 3.12, not the 3.10 in pyproject's requires-python: scipy's last 3.10 wheel
-# (1.15.3) no longer loads on macOS 27, and qwen-omni-utils imports it through
-# librosa. 3.12 resolves scipy 1.18, which does.
+# Matching pyproject's requires-python: scipy's last 3.10 wheel (1.15.3) no
+# longer loads on recent macOS, and qwen-omni-utils imports it through librosa.
+# 3.12 resolves scipy 1.18, which does.
 python: { version: "3.12" }
 # Measured on this repo, AuK-Flash on mps/bf16: 13.8 GB resident after load
 # (DiT 5.7 fp32 + Qwen 7.5 bf16 + VAE 0.6). AuK base is larger, and generation
