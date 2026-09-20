@@ -434,6 +434,13 @@
   $("recordBtn").onclick = async () => {
     if (state.recording) { state.mediaRecorder.stop(); return; }
     let stream;
+    // Undefined rather than denied when the page has no microphone permission
+    // at all — an embedding frame without allow="microphone", or a non-secure
+    // origin. Dropping a file still works, so say which it is.
+    if (!navigator.mediaDevices) {
+      alert("Recording is not available here: this page was given no microphone permission. Open the studio in a tab, or drop a file instead.");
+      return;
+    }
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
     catch (e) { alert(`Microphone access denied: ${e.message}`); return; }
     state.recordChunks = [];
