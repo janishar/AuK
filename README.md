@@ -11,12 +11,21 @@
   <a href=https://modelscope.cn/studios/Tencent-Hunyuan/AuK target="_blank"><img src=https://img.shields.io/badge/%F0%9F%A4%96%20ModelScope-Demo%20Space-624aff.svg height=22px></a>
 </div>
 
+<div align="center">
+  <a href="https://paperswithcode.co/api/v1/papers/2609.08936/leaderboard-badge-link?eval=29442" target="_blank"><img src="https://paperswithcode.co/api/v1/papers/2609.08936/leaderboard-badge.svg?eval=29442&amp;live=1" height="22px"></a>
+  <a href="https://paperswithcode.co/api/v1/papers/2609.08936/leaderboard-badge-link?eval=29438" target="_blank"><img src="https://paperswithcode.co/api/v1/papers/2609.08936/leaderboard-badge.svg?eval=29438&amp;live=1" height="22px"></a>
+  <a href="https://paperswithcode.co/api/v1/papers/2609.08936/leaderboard-badge-link?eval=29440" target="_blank"><img src="https://paperswithcode.co/api/v1/papers/2609.08936/leaderboard-badge.svg?eval=29440&amp;live=1" height="22px"></a>
+</div>
+
 <p align="center">
 💻 Try our model on the <a href="https://huggingface.co/spaces/tencent/AuK">HuggingFace Space</a> · <a href="https://modelscope.cn/studios/Tencent-Hunyuan/AuK">ModelScope Space</a>!
 </p>
 
 ## News
 
+- **[2026/09/16]** 💻 Reduced encoder memory by **~7.5 GiB**, making local inference more accessible on **consumer GPUs**. See [PR #19](https://github.com/Tencent-Hunyuan/AuK/pull/19).
+- **[2026/09/13]** 🍎🖥️ **AuK** now officially supports **MLX inference on Apple Silicon** (available on the [feat/mlx-apple-silicon](https://github.com/Tencent-Hunyuan/AuK/tree/feat/mlx-apple-silicon) branch) and **CPU offload for CUDA inference**.
+- **[2026/09/13]** 🏆 **AuK** serves as the end-to-end baseline for the **Single Model Track** of the [ICASSP 2027 Audio Editing Challenge](https://audio-editing-challenge.github.io/).
 - **[2026/09/09]** 🙌 Thanks to **SGLang-Omni** for Day 0 support for **AuK** and **AuK-Flash**! Check out the [SGLang-Omni cookbook](https://sgl-project.github.io/sglang-omni/cookbook/auk.html) to get started.
 - **[2026/09/09]** 🎉 We open-source **AuK**. Code and model weights are publicly available. Try it on the [🤗 Demo Space](https://huggingface.co/spaces/tencent/AuK) or the [🤖 ModelScope Space](https://modelscope.cn/studios/Tencent-Hunyuan/AuK)!
 
@@ -56,6 +65,7 @@ https://github.com/user-attachments/assets/c532bbdb-e6ce-4434-a9a5-16f29a8d4135
   - [Python API](#python-api)
 - [Fine-tuning](#fine-tuning)
 - [Contributing](#contributing)
+- [Acknowledgements](#acknowledgements)
 - [Citation](#citation)
 - [License](#license)
 
@@ -594,6 +604,13 @@ bash scripts/train.sh
 ## Contributing
 
 Contributions are welcome — bug reports, documentation, tests, inference fixes, UI improvements, and performance work. Please read the [Contributing Guide](docs/CONTRIBUTING.md) before opening an issue or pull request, and note that all participation is governed by our [Code of Conduct](docs/CODE_OF_CONDUCT.md).
+
+## Acknowledgements
+- [SGLang-Omni](https://github.com/sgl-project/sglang-omni) for Day-0 support and inference serving for AuK and AuK-Flash
+- [Xinference](https://github.com/xorbitsai/inference) for TTS, voice design, and zero-shot TTS integration
+- [ComfyUI-AuK](https://github.com/Saganaki22/ComfyUI-AuK) by [Saganaki22](https://github.com/Saganaki22) for community ComfyUI integration, and [drbaph](https://huggingface.co/drbaph) for [converted and quantized checkpoints](https://huggingface.co/drbaph/AuK-comfyui)
+- [ICASSP 2027 Audio Editing Challenge](https://github.com/Audio-Editing-Challenge/Audio-Editing-Challenge-Baseline) for adopting AuK as the end-to-end baseline for the Single Model Track
+- [Awesome-Audio-Editing](https://github.com/Ruiqi-Yan/Awesome-Audio-Editing) for featuring AuK and curating audio editing research and resources
 
 ## Citation
 
