@@ -23,6 +23,9 @@ dependencies = [
     # Qwen2.5-Omni support landed in transformers 4.52; the release was validated on 4.57.
     "transformers>=4.52.0,<5",
     "qwen-omni-utils>=0.0.9",
+    # qwen-omni-utils imports audioread at module load but never declares it; it
+    # used to arrive transitively via librosa, which dropped it in librosa 1.0.
+    "audioread",
     "omegaconf>=2.3.0",
     "torchdiffeq",
     "x_transformers>=1.31.14",
