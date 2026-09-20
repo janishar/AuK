@@ -19,6 +19,10 @@ the working directory. Nothing is sent off your machine.
 [![Platform](https://img.shields.io/badge/platform-macOS%20%28Apple%20Silicon%29-lightgrey?logo=apple)](#requirements)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+<p align="center">
+  <img src="assets/screenshot-1.png" alt="AuK studio: a zero-shot TTS task on the left with the instruction built from its fields, a recorded reference clip and the duration estimated from its transcript in the middle, and the reference library, generations and the render's log around them" width="100%">
+</p>
+
 > Upstream's own README — demos, benchmark tables, ComfyUI, the Gradio demo and
 > the Prompt Enhancer — is kept verbatim at [AUK.md](AUK.md). This one covers
 > running it here.
