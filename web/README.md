@@ -25,10 +25,13 @@ each that exists is linked as a weight, and without it `helm dev` downloads
 them. `AUK_CHECKPOINT=auk|auk_flash` picks which checkpoint runs (default: the
 one on disk). `bash web/run.sh stop` ends it.
 
-Then open the URL `helm dev` prints (the studio itself listens on 8420).
+Then open <http://127.0.0.1:8420>, where the studio listens. The URL `helm dev`
+prints is its own API on a random port, not the page.
 
-Requires [`helm`](https://helmstudio.in/docs/install-helm/) and a `.venv` with
-this repo and `web/requirements.txt` installed:
+Requires [`helm`](https://helmstudio.in/docs/install-helm/) `1.0.0-rc.4` or
+newer (`helm upgrade`) — AuK and AuK-Flash are selectable weights, and choosing
+one needs `helm dev -select`, which landed in that release. It also needs a
+`.venv` with this repo and `web/requirements.txt` installed:
 
 ```bash
 uv venv --python 3.12

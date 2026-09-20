@@ -83,6 +83,8 @@ AuK-Flash.
   `qwen-omni-utils` reaches it through librosa.
 - **[helmstudio](https://github.com/janishar/helmstudio)** for the studio —
   either helmstudio itself, or its `helm` CLI to run the studio on its own.
+  `1.0.0-rc.4` or newer: picking between the AuK and AuK-Flash checkpoints
+  needs `helm dev -select`, which landed in that release.
 - **Hugging Face CLI** (`hf`) to download weights by hand.
 
 ## Installation
@@ -123,6 +125,12 @@ mirrors are listed in [AUK.md](AUK.md#download-the-weights).
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/janishar/helmstudio/main/installer/install.sh)"   # helm, once
 AUK_MODELS=./ckpts bash web/run.sh
 ```
+
+Then open <http://127.0.0.1:8420> — the URL `helm dev` prints is its own API,
+not the page.
+
+If `helm dev` reports no `-select` flag, the installed `helm` predates
+`1.0.0-rc.4` and cannot choose a checkpoint: run `helm upgrade`.
 
 `web/run.sh` runs the studio under helmstudio's `helm dev`, linking whichever
 weights it finds under `AUK_MODELS` and keeping everything in `./.helm`.

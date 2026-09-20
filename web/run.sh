@@ -39,6 +39,18 @@ if ! command -v "$HELM" >/dev/null; then
   echo '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/janishar/helmstudio/main/installer/install.sh)"' >&2
   exit 1
 fi
+# AuK's checkpoints are selectable weights, and `helm dev` refuses to launch
+# without one chosen, so it needs a helm that can choose: -select landed in
+# 1.0.0-rc.4.
+# (Read into a variable, not piped: `grep -q` closing the pipe early would kill
+# helm with SIGPIPE, which pipefail reports as failure.)
+helm_dev_help="$("$HELM" dev -h 2>&1 || true)"
+case "$helm_dev_help" in *-select*) ;; *)
+  echo "this $("$HELM" --version) has no 'helm dev -select', which AuK studio needs to pick a checkpoint." >&2
+  echo "Update it to 1.0.0-rc.4 or newer:" >&2
+  echo '  helm upgrade' >&2
+  exit 1;;
+esac
 if [ ! -x .venv/bin/python ]; then
   echo "no .venv: create it with 'uv venv --python 3.12' and install this repo and web/requirements.txt" >&2
   exit 1
