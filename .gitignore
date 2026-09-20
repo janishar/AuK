@@ -11,9 +11,9 @@ gradio/
 eval/
 assets/after_pe/
 
-# AuK Studio (web/) — generated session data, keep the empty dir structure
-web/sessions/*
-!web/sessions/.gitkeep
+# AuK Studio: what `helm dev` keeps for a standalone run, and the run's scratch.
+.helm/
+.cache/
 # Python
 __pycache__/
 *.py[cod]

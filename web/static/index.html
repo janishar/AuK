@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AuK Studio</title>
+<!-- helm-css's tokens and this studio's hue for each theme, through the proxy -->
+<link rel="stylesheet" href="/helm/sdk/v1/helm-tokens.css">
+<link rel="stylesheet" href="/helm/accent.css">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -17,6 +20,7 @@
       <button id="sessionDupBtn" title="Duplicate session">⧉ Duplicate</button>
       <button id="sessionDelBtn" title="Delete session">🗑 Delete</button>
     </div>
+    <button id="helmGalleryBtn" class="ghost-btn" type="button" hidden>Gallery</button>
     <div class="engine-pills" id="enginePills"></div>
     <div class="status">
       <span id="connStatus" class="dot"></span>
@@ -167,11 +171,10 @@
       </section>
 
       <section class="terminal-section">
-        <div class="section-title">
-          Terminal
-          <button id="termClearBtn" class="link-btn">clear</button>
-        </div>
-        <pre id="terminalLog" class="terminal-log"></pre>
+        <div class="section-title">Terminal</div>
+        <!-- The log of this session's latest render, streamed from helmstudio,
+             which keeps it as a task job (helm-ui-sdk). -->
+        <helm-terminal id="terminal" follow></helm-terminal>
       </section>
     </main>
 
@@ -190,6 +193,17 @@
     </aside>
 
   </div>
+
+  <!-- Everything this studio has made, from helmstudio's gallery. Picking a take
+       makes it the reference clip, so an edit can be chained onto a generation. -->
+  <dialog id="galleryDialog" class="helm-dialog">
+    <div class="helm-dialog-head">
+      <b>Gallery</b>
+      <span class="muted">Pick a take to use it as the reference clip</span>
+      <button id="galleryCloseBtn" class="ghost-btn sm" type="button">Close</button>
+    </div>
+    <helm-gallery id="helmGallery" scope="self" kind="audio" picker></helm-gallery>
+  </dialog>
 </div>
 <script src="/static/tasks.js"></script>
 <script src="/static/app.js"></script>

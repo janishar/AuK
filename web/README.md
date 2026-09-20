@@ -1,109 +1,92 @@
-# AuK Studio
+# AuK studio
 
 A local web control surface for AuK — a guided, cookbook-driven UI over every
 task in [docs/COOKBOOK.md](../docs/COOKBOOK.md) (zero-shot/instruct TTS,
 content/acoustic/paralinguistic editing, enhancement, separation), without
 needing to hand-write instruction strings.
 
-It's a small FastAPI server (`server.py`) plus a no-build-step vanilla JS
-frontend (`static/`). The server keeps one `AukInfer` model resident in memory
-across requests (loading it is the slow part — reloading per-request the way
-`auk-infer` does would make the UI painful to iterate in), streams its logs to
-the browser's terminal panel over SSE, and persists generations into named
-sessions on disk under `web/sessions/<name>/`.
+It is a **helmstudio studio**: a small FastAPI server (`server.py`) plus a
+no-build-step vanilla JS page (`static/`), described by
+[`helmstudio.yaml`](../helmstudio.yaml) in the repository root.
 
-The task catalog (instruction templates, EN/CN wording, which fields each task
-needs, duration semantics) lives entirely in `static/tasks.js` and never
-touches the server — `server.py` only ever receives a finished instruction
-string, exactly like `auk-infer` itself. Add a task by editing that one file.
-
-## Setup
-
-Install into the **same environment** you already set up for AuK core
-(`pip install -e .` from the repo root) — the server imports `auk.infer.infer_auk`
-directly:
-
-```bash
-source .venv/bin/activate   # from repo root
-pip install -r web/requirements.txt
-```
+AuK studio keeps nothing of its own — see "Where things are kept" below.
 
 ## Running
 
+Under helmstudio, either from the launcher or on its own:
+
 ```bash
-bash web/run.sh --port 8420
+AUK_MODELS=/path/to/models bash web/run.sh
 ```
 
-Or from VS Code: **Run and Debug → "AuK Studio: Run server"** (or the
-`--reload` variant), defined in [`.vscode/launch.json`](../.vscode/launch.json)
-— it uses the repo's `.venv` interpreter directly, so no extra setup beyond
-the steps above.
+That runs `helm dev`, whose embedded provider keeps everything in `./.helm`.
+`AUK_MODELS` is a directory holding `AuK`, `AuK-Flash` and `Qwen2.5-Omni-3B`;
+each that exists is linked as a weight, and without it `helm dev` downloads
+them. `AUK_CHECKPOINT=auk|auk_flash` picks which checkpoint runs (default: the
+one on disk). `bash web/run.sh stop` ends it.
 
-Then open `http://127.0.0.1:8420`. Pass `--reload` while editing the frontend
-to auto-restart on server-side changes (`static/` is served live either way —
-just refresh the browser).
+Then open the URL `helm dev` prints (the studio itself listens on 8420).
 
-The server expects the usual `ckpts/AuK`, `ckpts/AuK-Flash`, and
-`ckpts/Qwen2.5-Omni-3B` layout at the repo root (symlinks are fine). Whichever
-variants are actually found are shown in the model picker; the rest are
-greyed out.
+Requires [`helm`](https://helmstudio.in/docs/install-helm/) and a `.venv` with
+this repo and `web/requirements.txt` installed:
+
+```bash
+uv venv --python 3.12
+uv pip install -e . -r web/requirements.txt
+```
+
+`server.py` refuses to start outside helmstudio, since that is where it keeps
+everything.
+
+## Where things are kept
+
+Nothing is stored in this repository. Everything goes through helmstudio's
+runtime SDK, which the manifest declares capabilities for:
+
+| What | Where |
+|---|---|
+| Sessions, and which reference clips each holds | helmstudio sessions (`state`), which the kv capability backs |
+| Reference clips, and every generated take | assets |
+| Takes with the instruction and sampling parameters that made them | gallery |
+| Each render's log | a task job, streamed by the page's `helm-terminal` |
+
+The page reaches all of it through the SDK's same-origin proxy at `/helm/`, so
+it never holds the token, and it is themed by helm-css's tokens plus the
+studio's own hue.
 
 ## Using it
 
-1. Pick a **task** on the left — grouped exactly like the Cookbook's five
-   categories. Each task renders only the fields it actually needs (e.g.
-   Speed Editing asks for a speed factor; De-accent asks for nothing).
-2. The **instruction** textarea is built automatically from those fields as
-   you type, in the language (EN/中文) you've selected — but it's a normal
-   textarea, so you can freely hand-edit it for anything the guided form
-   doesn't cover; it just stops auto-updating once you touch it.
-3. Drop, browse for, or **record** (via your mic, encoded to WAV entirely in
-   the browser — no server round-trip needed to capture it) the source /
-   reference audio a task needs. Everything you add is saved into the
-   session's **Reference library** on the right so you can reuse the same
-   voice across many tasks without re-uploading.
-4. **Duration** controls adapt per task: same-length tasks (enhancement,
-   pitch, emotion, …) just match the source; TTS/speed/content-edits ask for
-   an explicit target (with a source-derived suggestion prefilled); Zero-shot
-   TTS additionally offers "estimate from text", mirroring `--ref_text`/
-   `--gen_text` in the CLI.
-5. Choose the **model** (only downloaded variants are selectable), device,
-   dtype, and CPU offload (CUDA-only, matching the core engine's own
-   constraint). AuK-Flash automatically locks the advanced sampling knobs,
-   same as the CLI.
-6. Hit **Generate**. The model loads on first use (or click **Load model**
-   ahead of time) — the terminal panel on the right mirrors the real
-   `AukInfer` log lines so model loading isn't a silent black box.
-7. Every generation lands in the **Generations** gallery with its own player,
-   download, delete, and **Reuse settings** (which restores the task, fields,
-   model, and sampling knobs — including the exact realized seed — so you can
-   iterate).
-
-## Sessions
-
-Sessions are just directories:
-
-```
-web/sessions/<name>/
-  inputs/          uploaded/recorded reference audio + a small .json sidecar
-  outputs/         generated wavs, one history.json entry each
-  history.json     full generation history for the session (params + results)
-```
-
-Switch, create, duplicate, or delete them from the top bar — duplicating
-copies a session's reference audio and history so you can branch an
-experiment without losing the original.
+1. Pick a **task** on the left — the Cookbook's five categories. Each renders
+   only the fields it needs.
+2. The **instruction** is built from those fields as you type, in EN or 中文;
+   it is a plain textarea, so you can hand-edit anything the form doesn't cover
+   (it stops auto-updating once you do).
+3. Drop, browse for, or **record** the reference audio a task needs. It is
+   stored as an asset and listed in the session's **Reference library**.
+   **Gallery** in the top bar browses everything this studio has made, and
+   picking a take makes it the reference clip — so an edit can be chained onto
+   a generation.
+4. **Duration** adapts per task: same-length tasks match the source;
+   TTS/speed/content edits ask for a target (prefilled from the source);
+   Zero-shot TTS also offers "estimate from text", mirroring `--ref_text`/
+   `--gen_text`.
+5. Choose device and dtype. The checkpoint is whichever one helmstudio was
+   given — AuK and AuK-Flash are selectable weights, and the studio runs one at
+   a time because each is 14-25 GB resident. AuK-Flash locks the sampling
+   knobs to its fixed 4-step / CFG-off recipe, same as the CLI.
+6. Hit **Generate**. The model loads on first use; the **Terminal** streams
+   that render's log live from helmstudio.
+7. Every take lands in **Generations** with a player, download, delete and
+   **Reuse settings** (which restores the task, model and sampling knobs,
+   including the realized seed).
 
 ## Notes & honest limitations
 
-- AuK's sampler has no per-diffusion-step callback, so there's no live
-  step-by-step progress bar — the progress panel is an elapsed-time indicator,
-  and the terminal panel's log lines (`Loading Qwen…`, `Loaded EMA weights…`,
-  `Saved output …`) are the real signal of what phase is running.
-- Generation can't be cancelled mid-run once started (same constraint as the
-  CLI) — there's deliberately no "Cancel" button that would lie about that.
-- Only one model variant is kept resident at a time; switching variants
-  unloads and reloads (each is ~15-25GB, unlikely to both fit in memory at
-  once on most machines anyway).
-- Uploaded audio is decoded with `torchaudio` — WAV is guaranteed to work;
-  other formats depend on the codecs available to your torchaudio build.
+- AuK's sampler has no per-step callback, so there is no step-by-step progress
+  bar; the job's log lines are the real signal of what phase is running.
+- A generation cannot be cancelled once started (same as the CLI), so there is
+  deliberately no Cancel button that would lie about it.
+- Uploaded audio is decoded with `torchaudio`: WAV always works, other formats
+  depend on the codecs your torchaudio build has.
+- Deleting a session removes it and its settings; the takes it made stay in
+  helmstudio's gallery, which owns them.

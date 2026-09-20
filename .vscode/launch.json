@@ -2,25 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "AuK Studio: Run server",
+      // helmstudio starts the studio, with an environment only it can hand over
+      // (HELM_API, HELM_TOKEN, the weight paths), so the studio cannot be
+      // launched from here — it is started and then attached to:
+      //
+      //   AUK_DEBUGPY=5678 AUK_MODELS=/path/to/models bash web/run.sh
+      //
+      // run.sh then runs the studio's interpreter under debugpy, which waits
+      // for this attach before serving.
+      "name": "AuK Studio: attach to helm dev",
       "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/web/server.py",
-      "python": "${workspaceFolder}/.venv/bin/python",
-      "cwd": "${workspaceFolder}/web",
-      "args": ["--port", "8420"],
-      "console": "integratedTerminal",
-      "justMyCode": true
-    },
-    {
-      "name": "AuK Studio: Run server (auto-reload)",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/web/server.py",
-      "python": "${workspaceFolder}/.venv/bin/python",
-      "cwd": "${workspaceFolder}/web",
-      "args": ["--port", "8420", "--reload"],
-      "console": "integratedTerminal",
+      "request": "attach",
+      "connect": { "host": "127.0.0.1", "port": 5678 },
+      "pathMappings": [{ "localRoot": "${workspaceFolder}", "remoteRoot": "${workspaceFolder}" }],
       "justMyCode": true
     }
   ]
