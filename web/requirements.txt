@@ -3,3 +3,5 @@
 fastapi>=0.110
 uvicorn[standard]>=0.29
 python-multipart>=0.0.9
+# AuK studio keeps everything through helmstudio; major 1, as helmstudio.yaml pins it.
+helm-runtime-sdk>=1.0.0rc1,<2

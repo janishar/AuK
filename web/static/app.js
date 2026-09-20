@@ -22,6 +22,7 @@
     recordTimerHandle: null,
     genStart: 0,
     genTimerHandle: null,
+    jobPollHandle: null,
     pendingUploadFile: null,
   };
 
@@ -341,6 +342,7 @@
 
   function showUploadError(file, err) {
     state.pendingUploadFile = file;
+    $("uploadRetryBtn").hidden = !file;
     $("uploadErrorText").textContent = describeUploadError(err);
     $("uploadErrorBanner").classList.remove("hidden");
   }
@@ -541,6 +543,12 @@
     state.genTimerHandle = setInterval(() => {
       $("progressTimer").textContent = `${((Date.now() - state.genStart) / 1000).toFixed(1)}s`;
     }, 100);
+    state.jobPollHandle = setInterval(async () => {
+      try {
+        const h = await api("/api/health");
+        if (h.job_id) showJob(h.job_id);
+      } catch (_) {}
+    }, 1000);
 
     const params = currentEngineParams();
     const fd = new FormData();
@@ -565,6 +573,7 @@
 
     try {
       const entry = await apiForm("/api/generate", fd);
+      if (entry.job_id) showJob(entry.job_id);
       state.history.unshift(entry);
       renderGallery();
       showOutput(entry);
@@ -572,6 +581,7 @@
       alert(`Generation failed: ${e.message}`);
     } finally {
       clearInterval(state.genTimerHandle);
+      clearInterval(state.jobPollHandle);
       $("progressSection").classList.add("hidden");
       validateForm();
       loadHealth();
@@ -652,26 +662,39 @@
     document.querySelector(".left-panel").scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // ------------------------------------------------------------- sessions
+  // ------------------------------------------------------------- sessions (helmstudio's)
   async function refreshSessions() {
     const res = await api("/api/sessions");
     state.sessions = res.sessions;
     const sel = $("sessionSelect");
     sel.innerHTML = "";
-    state.sessions.forEach((s) => { const o = el("option", null, s); o.value = s; sel.appendChild(o); });
-    if (!state.session || !state.sessions.includes(state.session)) state.session = state.sessions[0];
+    state.sessions.forEach((s) => { const o = el("option", null, s.name); o.value = s.id; sel.appendChild(o); });
+    if (!state.sessions.length) {
+      // helmstudio holds the sessions, so a studio opened for the first time has none.
+      const made = await apiJson("/api/sessions", { name: "default" });
+      state.sessions = [made];
+      const o = el("option", null, made.name); o.value = made.id; sel.appendChild(o);
+    }
+    if (!state.session || !state.sessions.some((s) => s.id === state.session)) state.session = state.sessions[0].id;
     sel.value = state.session;
   }
 
-  async function switchSession(name) {
-    state.session = name;
-    $("sessionSelect").value = name;
+  function sessionName(id) {
+    const found = state.sessions.find((s) => s.id === id);
+    return found ? found.name : id;
+  }
+
+  async function switchSession(id) {
+    state.session = id;
+    $("sessionSelect").value = id;
     state.source = null;
     $("sourcePreview").classList.add("hidden");
     clearUploadError();
+    // Tell helmstudio which session is open, so its own screens agree with the page.
+    api(`/api/sessions/${id}/activate`, { method: "POST" }).catch(() => {});
     const [hist, inputs] = await Promise.all([
-      api(`/api/sessions/${name}/history`),
-      api(`/api/sessions/${name}/inputs`),
+      api(`/api/sessions/${id}/history`),
+      api(`/api/sessions/${id}/inputs`),
     ]);
     state.history = hist.history;
     state.inputs = inputs.inputs;
@@ -706,46 +729,84 @@
   $("sessionNewBtn").onclick = () => openPromptModal({
     title: "New session",
     onSave: async (name) => {
-      await apiJson("/api/sessions", { name });
+      const made = await apiJson("/api/sessions", { name });
       await refreshSessions();
-      await switchSession(name);
+      await switchSession(made.id);
     },
   });
   $("sessionDupBtn").onclick = () => openPromptModal({
-    title: `Duplicate "${state.session}" as…`,
+    title: `Duplicate "${sessionName(state.session)}" as…`,
     onSave: async (name) => {
-      await apiJson(`/api/sessions/${state.session}/duplicate`, { new_name: name });
+      const made = await apiJson(`/api/sessions/${state.session}/duplicate`, { new_name: name });
       await refreshSessions();
-      await switchSession(name);
+      await switchSession(made.id);
     },
   });
   $("sessionDelBtn").onclick = () => {
     $("confirmModalTitle").textContent = "Delete session?";
-    $("confirmModalMessage").textContent = `This permanently deletes "${state.session}" and everything in it.`;
+    $("confirmModalMessage").textContent =
+      `This deletes "${sessionName(state.session)}" and its settings. Takes it made stay in helmstudio's gallery.`;
     $("confirmModal").classList.remove("hidden");
     $("confirmModalOk").onclick = async () => {
       await api(`/api/sessions/${state.session}`, { method: "DELETE" });
       $("confirmModal").classList.add("hidden");
+      state.session = null;
       await refreshSessions();
       await switchSession(state.session);
     };
   };
   $("confirmModalCancel").onclick = () => $("confirmModal").classList.add("hidden");
 
-  // ------------------------------------------------------------- terminal / SSE
-  function connectLogs() {
-    const src = new EventSource("/api/logs/stream");
-    src.onopen = () => { $("connStatus").className = "dot on"; $("connLabel").textContent = "connected"; };
-    src.onerror = () => { $("connStatus").className = "dot off"; $("connLabel").textContent = "reconnecting…"; };
-    src.onmessage = (e) => {
-      const line = JSON.parse(e.data);
-      const pre = $("terminalLog");
-      const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
-      pre.textContent += line + "\n";
-      if (atBottom) pre.scrollTop = pre.scrollHeight;
-    };
+  // ------------------------------------------------------------- helmstudio: runtime, components, theme
+  const HELM_SDK = "/helm/sdk/v1";
+
+  /** The terminal streams one render's log, which helmstudio keeps as a task job. */
+  function showJob(jobId) {
+    const terminal = $("terminal");
+    if (!terminal) return;
+    if (!jobId) terminal.removeAttribute("job");
+    else if (terminal.getAttribute("job") !== jobId) terminal.setAttribute("job", jobId);
   }
-  $("termClearBtn").onclick = () => { $("terminalLog").textContent = ""; };
+
+  async function connectHelmstudio() {
+    const { connect, themeBridge } = await import(`${HELM_SDK}/helm-runtime.js`);
+    await import(`${HELM_SDK}/helm-ui.js`);
+    themeBridge();
+    const helm = (window.helm = connect());
+    $("terminal").client = helm;
+
+    const dialog = $("galleryDialog");
+    const gallery = $("helmGallery");
+    gallery.client = helm;
+    const button = $("helmGalleryBtn");
+    button.hidden = false;
+    button.addEventListener("click", () => dialog.showModal());
+    $("galleryCloseBtn").addEventListener("click", () => dialog.close());
+
+    // Picking a take in the gallery makes it this session's reference clip, so an
+    // edit can be chained onto something already generated. helmstudio owns the
+    // bytes either way; this only adopts the asset into the open session.
+    gallery.addEventListener("pick", async (event) => {
+      const item = event.detail && event.detail.item;
+      if (!item) return;
+      dialog.close();
+      try {
+        const asset = item.asset || {};
+        const added = await apiJson(`/api/sessions/${state.session}/inputs:adopt`, {
+          asset_id: item.asset_id,
+          filename: item.title || `take-${String(item.asset_id).slice(0, 8)}.wav`,
+          duration_seconds: asset.duration_s ?? "",
+        });
+        await refreshInputs();
+        setSource(added);
+      } catch (err) {
+        showUploadError(null, err);
+      }
+    });
+
+    $("connStatus").className = "dot on";
+    $("connLabel").textContent = "helmstudio";
+  }
 
   // ------------------------------------------------------------- boot
   async function init() {
@@ -755,7 +816,7 @@
     await refreshSessions();
     await switchSession(state.session);
     selectTask(AUK_TASKS.find((t) => t.category === state.category));
-    connectLogs();
+    await connectHelmstudio();
     setInterval(loadHealth, 15000);
   }
 
